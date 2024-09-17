@@ -16,9 +16,11 @@ st.title('Сингулярное разложение изображений')
 st.write('Загрузи картинку, выбери количество сингулярных чисел, смотри магию.')
 
 ## Шаг 1. Загрузка картинки
-url = st.text_input('Вставьте ссылку на изображение:')
+uploaded_file = st.file_uploader("Выберите файл изображения", type=["png", "jpg", "jpeg"])
 
-image = io.imread(url)
+image = Image.open(uploaded_file)
+image = image.convert('RGB')
+image = np.array(image)
 
 st.image(image, caption='Ваша исходная картинка:', use_column_width=True)
 
