@@ -1,44 +1,48 @@
 import streamlit as st
+import pandas as pd
 import numpy as np
-import cv2
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.datasets import load_iris # pip install scikit-learn
+from sklearn.decomposition import TruncatedSVD, PCA
+
+from skimage import io
 from PIL import Image
 
+import requests
+from io import BytesIO
+
+# Описание
 st.title('Сингулярное разложение изображений')
-st.write('Загрузите картинку, выберите количество сингулярных чисел, смотрите магию.')
+st.write('Загрузи картинку, выбери количество сингулярных чисел, смотри магию.')
 
-# Поле для загрузки файла изображения
-uploaded_file = st.file_uploader("Выберите файл изображения", type=["png", "jpg", "jpeg"])
+## Шаг 1. Загрузка картинки
+url = st.text_input('Вставьте ссылку на изображение:')
+response = requests.get(url)
+image = Image.open(BytesIO(response.content))
 
-if uploaded_file is not None:
-    try:
-        # Загрузка изображения с помощью PIL
-        image = Image.open(uploaded_file)
-        # Конвертация в RGB (если изображение в формате RGBA или другим)
-        image = image.convert('RGB')
-        image_np = np.array(image)
+image = np.array(image)
 
-        # Отображение исходного изображения
-        st.image(image_np, caption='Исходное изображение', use_column_width=True)
+st.image(image, caption='Ваша исходная картинка:', use_column_width=True)
 
-        # Поле для выбора количества сингулярных чисел
-        num_singular_values = st.slider('Выберите количество сингулярных чисел', 1, min(image_np.shape[0], image_np.shape[1]), 50)
+# Поле для выбора количества сингулярных чисел
+num_singular_values = st.slider('Выберите количество сингулярных чисел:', 1, min(image.shape[0], image.shape[1]), 100)
 
-        # Функция для выполнения SVD и восстановления изображения
-        def svd_reconstruct(image, num_singular_values):
-            u, s, vt = np.linalg.svd(image, full_matrices=False)
-            s[num_singular_values:] = 0  # Обнуление всех сингулярных чисел кроме первых num_singular_values
-            return np.dot(u, np.dot(np.diag(s), vt))
 
-        # Применение SVD к каждому каналу RGB
-        reconstructed_image = np.zeros_like(image_np)
-        for i in range(3):  # Для каждого канала R, G, B
-            reconstructed_image[:, :, i] = svd_reconstruct(image_np[:, :, i], num_singular_values)
+def svd_reconstruct(image, num_singular_values):
+    u, s, vt = np.linalg.svd(image, full_matrices=False)
+    s[num_singular_values:] = 0  # Обнуление всех сингулярных чисел кроме первых num_singular_values
+    return np.dot(u, np.dot(np.diag(s), vt))
 
-        # Преобразование в формат изображения для отображения
-        reconstructed_image_pil = Image.fromarray(np.uint8(reconstructed_image))
+# Применение SVD к каждому каналу RGB
+reconstructed_image = np.zeros_like(image)
+for i in range(3):  # Для каждого канала R, G, B
+    reconstructed_image[:, :, i] = svd_reconstruct(image[:, :, i], num_singular_values)
 
-        # Отображение восстановленного изображения
-        st.image(reconstructed_image_pil, caption=f'Изображение с {num_singular_values} сингулярными числами', use_column_width=True)
+# Преобразование в формат изображения для отображения
+reconstructed_image_pil = Image.fromarray(np.uint8(reconstructed_image))
 
-    except Exception as e:
-        st.error(f"Не удалось обработать изображение. Ошибка: {e}")
+# Отображение восстановленного изображения
+st.image(reconstructed_image_pil, caption=f'Изображение с {num_singular_values} сингулярными числами', use_column_width=True)
